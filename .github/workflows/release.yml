@@ -25,6 +25,9 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
+      - name: Install gotip
+        run: make gotip
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
