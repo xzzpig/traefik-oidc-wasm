@@ -1,5 +1,5 @@
 # The name of your plugin as displayed in the Plugins Catalog web UI.
-displayName: Traefik OIDC Authentication
+displayName: Traefik OIDC Authentication WASM
 runtime: wasm
 # For now, `middleware` is the only type available.
 type: middleware

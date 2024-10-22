@@ -16,14 +16,16 @@ import (
 	"github.com/coreos/go-oidc"
 	"github.com/http-wasm/http-wasm-guest-tinygo/handler"
 	"github.com/http-wasm/http-wasm-guest-tinygo/handler/api"
-	"github.com/juliens/wasm-goexport/guest"
+	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 	_ "github.com/stealthrocket/net/http"
 	"github.com/stealthrocket/net/wasip1"
 	"golang.org/x/oauth2"
 )
 
-func main() {
+func main() {}
+
+func init() {
 	config := NewConfig()
 	err := json.Unmarshal(handler.Host.GetConfig(), &config)
 	if err != nil {
@@ -43,12 +45,12 @@ func main() {
 		os.Exit(1)
 	}
 	handler.HandleRequestFn = mw.handleRequest
-	guest.SetExports(handler.GetExports())
 }
 
 type TraefikOIDCWasm struct {
 	provider *oidc.Provider
 	verifier *oidc.IDTokenVerifier
+	totp     totp.ValidateOpts
 	config   *Config
 }
 
@@ -88,6 +90,12 @@ func New(config *Config) (*TraefikOIDCWasm, error) {
 		config:   config,
 		provider: provider,
 		verifier: verifier,
+		totp: totp.ValidateOpts{
+			Period:    30, //nolint:mnd
+			Skew:      1,
+			Digits:    otp.DigitsEight,
+			Algorithm: otp.AlgorithmSHA1,
+		},
 	}, nil
 }
 
@@ -115,8 +123,10 @@ func (p *TraefikOIDCWasm) handleRequest(req api.Request, resp api.Response) (nex
 		return false, 0
 	}
 	if p.verifyToken(req, resp) {
+		handler.Host.Log(api.LogLevelDebug, "token verified")
 		return true, 0
 	}
+	handler.Host.Log(api.LogLevelDebug, "token not verified")
 	p.doRedirect(req, resp)
 	return false, 0
 }
@@ -151,7 +161,7 @@ func (p *TraefikOIDCWasm) newOauth2Config(req api.Request) *oauth2.Config {
 
 func (p *TraefikOIDCWasm) doRedirect(req api.Request, resp api.Response) {
 	oauth2Config := p.newOauth2Config(req)
-	state, _ := totp.GenerateCodeCustom(base32.StdEncoding.EncodeToString([]byte(oauth2Config.ClientSecret)), time.Now(), p.config.Totp)
+	state, _ := totp.GenerateCodeCustom(base32.StdEncoding.EncodeToString([]byte(oauth2Config.ClientSecret)), time.Now(), p.totp)
 	authCodeURL := oauth2Config.AuthCodeURL(state)
 	SetCookie(resp, &http.Cookie{Name: p.config.Cookie.OriginPath, Value: req.GetURI(), Path: "/", HttpOnly: true})
 	Redirect(req, resp, authCodeURL, http.StatusFound)
@@ -166,7 +176,7 @@ func (p *TraefikOIDCWasm) handleCallback(req api.Request, resp api.Response) err
 
 	oauth2Config := p.newOauth2Config(req)
 
-	stateVerification, err := totp.ValidateCustom(_url.Query().Get("state"), base32.StdEncoding.EncodeToString([]byte(oauth2Config.ClientSecret)), time.Now(), p.config.Totp)
+	stateVerification, err := totp.ValidateCustom(_url.Query().Get("state"), base32.StdEncoding.EncodeToString([]byte(oauth2Config.ClientSecret)), time.Now(), p.totp)
 	if err != nil {
 		return errors.Join(errors.New("failed to verify state"), err)
 	} else if !stateVerification {

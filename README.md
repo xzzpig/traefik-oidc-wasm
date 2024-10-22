@@ -14,7 +14,7 @@ experimental:
   plugins:
     traefik-oidc:
       moduleName: "github.com/xzzpig/traefik-oidc-wasm"
-      version: "v0.0.3"
+      version: "v0.0.4"
 ```
 
 Add a middleware and reference it in a route.

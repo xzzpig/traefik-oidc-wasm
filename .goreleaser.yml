@@ -3,15 +3,14 @@ version: 2
 
 builds:
   - binary: plugin
-    gobinary: go
     no_unique_dist_dir: true
     main: .
     ldflags:
       - ''
-    goos:
-      - wasip1
-    goarch:
-      - wasm
+    targets:
+      - wasip1_wasm
+    buildmode: c-shared
+    gobinary: ./gopath/bin/gotip
 
 changelog:
   sort: asc

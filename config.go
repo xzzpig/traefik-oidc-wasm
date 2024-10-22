@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc"
-	"github.com/pquerna/otp"
-	"github.com/pquerna/otp/totp"
 )
 
 type StringBoolean bool
@@ -18,7 +16,6 @@ type Config struct {
 	Cookie               CookieConfig      `json:"cookie"`
 	Endpoint             EndpointConfig    `json:"endpoint"`
 	TokenAutoRefreshTime time.Duration     `json:"tokenAutoRefreshTime"`
-	Totp                 totp.ValidateOpts `json:"totp"`
 	DNSAddr              string            `json:"dnsAddr"`
 	ClaimMap             map[string]string `json:"claimMap"`
 }
@@ -56,11 +53,6 @@ func NewConfig() *Config {
 		Endpoint: EndpointConfig{
 			Callback: "/oauth2/callback",
 			Fallback: "/",
-		},
-		Totp: totp.ValidateOpts{
-			Period:    30, //nolint:mnd
-			Digits:    otp.DigitsEight,
-			Algorithm: otp.AlgorithmSHA1,
 		},
 		DNSAddr:              "1.1.1.1:53",
 		TokenAutoRefreshTime: time.Minute * 5, //nolint:mnd
