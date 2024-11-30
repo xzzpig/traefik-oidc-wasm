@@ -100,6 +100,15 @@ func New(config *Config) (*TraefikOIDCWasm, error) {
 }
 
 func (p *TraefikOIDCWasm) handleRequest(req api.Request, resp api.Response) (next bool, reqCtx uint32) {
+	defer func() {
+		if err := recover(); err != nil {
+			handler.Host.Log(api.LogLevelError, fmt.Sprintf("panic recovered in handleRequest: %v", err))
+			HttpError(resp, "Internal Server Error", http.StatusInternalServerError)
+			next = false
+			reqCtx = 0
+		}
+	}()
+
 	if !p.config.Enable {
 		return true, 0
 	}
